@@ -9,31 +9,29 @@
 //
 
 #import "JKPTree.h"
-#import <CoreFoundation/CFString.h>
-#import <CoreFoundation/CFTree.h>
 
 //---------------------------------------------------------- 
 //  JKPTreeCreateContext()
 //---------------------------------------------------------- 
-CFTreeContext JKPTreeCreateContext( id content )
+CFTreeContext JKPTreeCreateContext(id content)
 {
-    CFTreeContext context;
-    memset( &context, 0, sizeof( CFTreeContext ) );
+  CFTreeContext context;
+  memset( &context, 0, sizeof( CFTreeContext ) );
 #if __has_feature(objc_arc)
-  context.info            = (__bridge void *) content;
+  context.info = (__bridge void *)content;
 #else
   context.info            = (void *) content;  
 #endif
-    context.retain          = CFRetain;
-    context.release         = CFRelease;
-    context.copyDescription = CFCopyDescription;
-    return context;
+  context.retain = CFRetain;
+  context.release = CFRelease;
+  context.copyDescription = CFCopyDescription;
+  return context;
 }
 
 #pragma mark -
 
 @interface JKPTree (Private)
-- (id) initWithCFTree:(CFTreeRef)backing;
+- (id)initWithCFTree:(CFTreeRef)backing;
 @end
 
 #pragma mark -
@@ -43,7 +41,7 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 //  treeWithContentObject:
 //---------------------------------------------------------- 
-+ (id) treeWithContentObject:(id)theContentObject;
++ (id)treeWithContentObject:(id)theContentObject;
 {
   id object = [[self alloc] initWithContentObject:theContentObject];
 #if __has_feature(objc_arc)
@@ -56,24 +54,25 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 //  initWithContentObject:
 //---------------------------------------------------------- 
-- (id) initWithContentObject:(id)theContentObject;
+- (id)initWithContentObject:(id)theContentObject;
 {
-    self = [super init];
-    if ( !self )
-        return nil;
-    
-    CFTreeContext theContext = JKPTreeCreateContext( theContentObject );
-    treeBacking = CFTreeCreate( kCFAllocatorDefault, &theContext );
-    
-    return self;
+  self = [super init];
+  if (!self) {
+    return nil;
+  }
+
+  CFTreeContext theContext = JKPTreeCreateContext(theContentObject);
+  treeBacking = CFTreeCreate(kCFAllocatorDefault, &theContext);
+
+  return self;
 }
 
 //---------------------------------------------------------- 
 //  dealloc
 //---------------------------------------------------------- 
-- (void) dealloc;
+- (void)dealloc;
 {
-    CFRelease( treeBacking );
+  CFRelease(treeBacking);
 #if !__has_feature(objc_arc)
   [super dealloc];
 #endif
@@ -86,79 +85,85 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 //  addChildObject:
 //---------------------------------------------------------- 
-- (void) addChildObject:(id)childObject;
+- (JKPTree *)addChildObject:(id)childObject;
 {
-    CFTreeContext theContext = JKPTreeCreateContext( childObject );
-    CFTreeRef childTree = CFTreeCreate( kCFAllocatorDefault, &theContext );
-    CFTreeAppendChild( treeBacking, childTree );
-    CFRelease( childTree );
+  CFTreeContext theContext = JKPTreeCreateContext(childObject);
+  CFTreeRef childTree = CFTreeCreate(kCFAllocatorDefault, &theContext);
+  CFTreeAppendChild(treeBacking, childTree);
+  CFRelease(childTree);
+
+  JKPTree *addedChild = [[JKPTree alloc] initWithCFTree:childTree];
+  return addedChild;
 }
 
 //---------------------------------------------------------- 
 //  addChildObject:atIndex:
 //---------------------------------------------------------- 
-- (void) addChildObject:(id)childObject atIndex:(NSUInteger)index;
+- (JKPTree *)addChildObject:(id)childObject atIndex:(NSUInteger)index;
 {
-    CFTreeContext theContext = JKPTreeCreateContext( childObject );
-    CFTreeRef childTree = CFTreeCreate( kCFAllocatorDefault, &theContext );
-    CFTreeRef precedingSibling = CFTreeGetChildAtIndex( treeBacking, (CFIndex) index - 1U );
-    CFTreeInsertSibling( precedingSibling, childTree );
-    CFRelease( childTree );
+  CFTreeContext theContext = JKPTreeCreateContext(childObject);
+  CFTreeRef childTree = CFTreeCreate(kCFAllocatorDefault, &theContext);
+  CFTreeRef precedingSibling = CFTreeGetChildAtIndex(treeBacking, (CFIndex)index - 1U);
+  CFTreeInsertSibling(precedingSibling, childTree);
+  CFRelease(childTree);
+
+  JKPTree *addedChild = [[JKPTree alloc] initWithCFTree:childTree];
+  return addedChild;
 }
 
 //---------------------------------------------------------- 
 //  removeChildObject:
 //---------------------------------------------------------- 
-- (BOOL) removeChildObject:(id)childObject;
+- (BOOL)removeChildObject:(id)childObject;
 {
-    // grab pointers to all the children...
-    CFIndex childCount = CFTreeGetChildCount( treeBacking );
-    CFTreeRef *children = (CFTreeRef *)malloc( childCount * sizeof( CFTreeRef ) );
-    CFTreeGetChildren( treeBacking, children );
-    
-    // iterate over the children....if a child matches, then remove it and stop...
-    BOOL result = NO;
-    CFIndex i;
-    for ( i = 0; i < childCount; i++ )
-    {
-        CFTreeRef child = children[i];
-        CFTreeContext theContext;
-        CFTreeGetContext( child, &theContext );
-        
-        // is this the node...?
+  // grab pointers to all the children...
+  CFIndex childCount = CFTreeGetChildCount(treeBacking);
+  CFTreeRef *children = (CFTreeRef *)malloc(childCount * sizeof( CFTreeRef ));
+  CFTreeGetChildren(treeBacking, children);
+
+  // iterate over the children....if a child matches, then remove it and stop...
+  BOOL result = NO;
+  CFIndex i;
+  for (i = 0; i < childCount; i++) {
+    CFTreeRef child = children[i];
+    CFTreeContext theContext;
+    CFTreeGetContext(child, &theContext);
+
+    // is this the node...?
 #if __has_feature(objc_arc)
-      if ( ![childObject isEqual:(__bridge id)theContext.info] )
-        continue;
+    if (![childObject isEqual:(__bridge id)theContext.info]) {
+      continue;
+    }
 #else
       if ( ![childObject isEqual:(id)theContext.info] )
         continue;
 #endif
-        
-        // we found it...
-        result = YES;
-        CFTreeRemove( child );
-    }
-    
-    // cleanup and return result...
-    free( children );
-    return result;
+
+    // we found it...
+    result = YES;
+    CFTreeRemove(child);
+  }
+
+  // cleanup and return result...
+  free(children);
+  return result;
 }
 
 //---------------------------------------------------------- 
 //  removeChildObjectAtIndex: 
 //---------------------------------------------------------- 
-- (void) removeChildObjectAtIndex:(NSUInteger)index;
+- (void)removeChildObjectAtIndex:(NSUInteger)index;
 {
-    CFTreeRef child = CFTreeGetChildAtIndex( treeBacking, (CFIndex)index );
-    CFTreeRemove( child );
+  CFTreeRef child = CFTreeGetChildAtIndex(treeBacking, (CFIndex)index);
+  CFTreeRemove(child);
 }
 
 //---------------------------------------------------------- 
 //  removeAllChildren
 //---------------------------------------------------------- 
-- (void) removeAllChildren;
+- (void)removeAllChildren;
 {
-    CFTreeRemoveAllChildren( treeBacking);
+  CFTreeRemoveAllChildren(treeBacking);
 }
 
 #pragma mark -
@@ -167,9 +172,9 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 //  root
 //---------------------------------------------------------- 
-- (JKPTree *) root;
+- (JKPTree *)root;
 {
-    CFTreeRef root = CFTreeFindRoot( treeBacking );
+  CFTreeRef root = CFTreeFindRoot(treeBacking);
   JKPTree *jRoot = [[JKPTree alloc] initWithCFTree:root];
 #if __has_feature(objc_arc)
   return jRoot;
@@ -181,10 +186,10 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 //  parent
 //---------------------------------------------------------- 
-- (JKPTree *) parent;
+- (JKPTree *)parent;
 {
-    CFTreeRef parent = CFTreeGetParent( treeBacking );
-  if ( parent != NULL ) {
+  CFTreeRef parent = CFTreeGetParent(treeBacking);
+  if (parent != NULL) {
     JKPTree *jRoot = [[JKPTree alloc] initWithCFTree:parent];
 #if __has_feature(objc_arc)
     return jRoot;
@@ -192,16 +197,16 @@ CFTreeContext JKPTreeCreateContext( id content )
     return [jRoot autorelease]
 #endif
   }
-    return nil;
+  return nil;
 }
 
 //---------------------------------------------------------- 
 //  firstChild
 //---------------------------------------------------------- 
-- (JKPTree *) firstChild;
+- (JKPTree *)firstChild;
 {
-    CFTreeRef firstChild = CFTreeGetFirstChild( treeBacking );
-  if ( firstChild != NULL ) {
+  CFTreeRef firstChild = CFTreeGetFirstChild(treeBacking);
+  if (firstChild != NULL) {
     JKPTree *jFirstChild = [[JKPTree alloc] initWithCFTree:firstChild];
 #if __has_feature(objc_arc)
     return jFirstChild;
@@ -215,10 +220,10 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 //  nextSibling
 //---------------------------------------------------------- 
-- (JKPTree *) nextSibling;
+- (JKPTree *)nextSibling;
 {
-    CFTreeRef nextSibling = CFTreeGetNextSibling( treeBacking );
-  if ( nextSibling != NULL ) {
+  CFTreeRef nextSibling = CFTreeGetNextSibling(treeBacking);
+  if (nextSibling != NULL) {
     JKPTree *jNextSibling = [[JKPTree alloc] initWithCFTree:nextSibling];
 #if __has_feature(objc_arc)
     return jNextSibling;
@@ -226,30 +231,30 @@ CFTreeContext JKPTreeCreateContext( id content )
     return [jNextSibling autorelease]
 #endif
   }
-    return nil;
+  return nil;
 }
 
 //---------------------------------------------------------- 
 //  childCount
 //---------------------------------------------------------- 
-- (NSUInteger) childCount;
+- (NSUInteger)childCount;
 {
-    return (NSUInteger)CFTreeGetChildCount( treeBacking );
+  return (NSUInteger)CFTreeGetChildCount(treeBacking);
 }
 
 //---------------------------------------------------------- 
 //  nodeAtIndex:
 //---------------------------------------------------------- 
-- (JKPTree *) nodeAtIndex:(NSUInteger)index;
+- (JKPTree *)nodeAtIndex:(NSUInteger)index;
 {
-    CFTreeRef child = CFTreeGetChildAtIndex( treeBacking, (CFIndex)index );
-  if ( child != NULL ) {
+  CFTreeRef child = CFTreeGetChildAtIndex(treeBacking, (CFIndex)index);
+  if (child != NULL) {
     JKPTree *jChild = [[JKPTree alloc] initWithCFTree:child];
 #if __has_feature(objc_arc)
     return jChild;
 #else
     return [jChild autorelease]
-#endif    
+#endif
   }
   return nil;
 }
@@ -259,9 +264,9 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 - (id)childObjectAtIndex:(NSUInteger)index;
 {
-    CFTreeRef child = CFTreeGetChildAtIndex( treeBacking, (CFIndex)index );
-    CFTreeContext theContext;
-    CFTreeGetContext( child, &theContext );
+  CFTreeRef child = CFTreeGetChildAtIndex(treeBacking, (CFIndex)index);
+  CFTreeContext theContext;
+  CFTreeGetContext(child, &theContext);
 #if __has_feature(objc_arc)
   return (__bridge id)theContext.info;
 #else  
@@ -272,45 +277,44 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 //  allSiblings
 //---------------------------------------------------------- 
-- (NSArray *) allSiblingNodes;
+- (NSArray *)allSiblingNodes;
 {
-    return [[self parent] childNodes];
+  return [[self parent] childNodes];
 }
 
 //---------------------------------------------------------- 
 //  allSiblingObjects
 //---------------------------------------------------------- 
-- (NSArray *) allSiblingObjects;
+- (NSArray *)allSiblingObjects;
 {
-    return [[self parent] childObjects];
+  return [[self parent] childObjects];
 }
 
 //---------------------------------------------------------- 
 //  childNodes
 //---------------------------------------------------------- 
-- (NSArray *) childNodes;
+- (NSArray *)childNodes;
 {
-    // grab pointers to all the children...
-    CFIndex childCount = CFTreeGetChildCount( treeBacking );
-    CFTreeRef *children = (CFTreeRef *)malloc( childCount * sizeof( CFTreeRef ) );
-    CFTreeGetChildren( treeBacking, children );
-    
-    // iterate over the children extracting contentObjects and adding to array...
-    NSMutableArray *childWrappers = [NSMutableArray arrayWithCapacity:childCount];
-    CFIndex i;
-    for ( i = 0; i < childCount; i++ )
-    {
-        JKPTree *child = [[JKPTree alloc] initWithCFTree:children[i]];
-        [childWrappers addObject:child];
+  // grab pointers to all the children...
+  CFIndex childCount = CFTreeGetChildCount(treeBacking);
+  CFTreeRef *children = (CFTreeRef *)malloc(childCount * sizeof( CFTreeRef ));
+  CFTreeGetChildren(treeBacking, children);
+
+  // iterate over the children extracting contentObjects and adding to array...
+  NSMutableArray *childWrappers = [NSMutableArray arrayWithCapacity:childCount];
+  CFIndex i;
+  for (i = 0; i < childCount; i++) {
+    JKPTree *child = [[JKPTree alloc] initWithCFTree:children[i]];
+    [childWrappers addObject:child];
 #if !__has_feature(objc_arc)
         [child release];
 #endif
-    }
-    
-    // cleanup and return result...
-    free( children );
+  }
+
+  // cleanup and return result...
+  free(children);
 #if __has_feature(objc_arc)
-  return ( childCount ? [childWrappers copy] : nil );
+  return (childCount ? [childWrappers copy] : nil);
 #else
   return ( childCount ? [[childWrappers copy] autorelease] : nil );
 #endif
@@ -319,33 +323,33 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 //  childObjects
 //---------------------------------------------------------- 
-- (NSArray *) childObjects;
+- (NSArray *)childObjects;
 {
-    // grab pointers to all the children...
-    CFIndex childCount = CFTreeGetChildCount( treeBacking );
-    CFTreeRef *children = (CFTreeRef *)malloc( childCount * sizeof( CFTreeRef ) );
-    CFTreeGetChildren( treeBacking, children );
-    
-    // iterate over the children wrapping each in turn and adding to the return array...
-    NSMutableArray *childObjects = [NSMutableArray arrayWithCapacity:childCount];
-    CFIndex i;
-    for ( i = 0; i < childCount; i++ )
-    {
-        CFTreeContext theContext;
-        CFTreeGetContext( children[i], &theContext );
+  // grab pointers to all the children...
+  CFIndex childCount = CFTreeGetChildCount(treeBacking);
+  CFTreeRef *children = (CFTreeRef *)malloc(childCount * sizeof( CFTreeRef ));
+  CFTreeGetChildren(treeBacking, children);
+
+  // iterate over the children wrapping each in turn and adding to the return array...
+  NSMutableArray *childObjects = [NSMutableArray arrayWithCapacity:childCount];
+  CFIndex i;
+  for (i = 0; i < childCount; i++) {
+    CFTreeContext theContext;
+    CFTreeGetContext(children[i], &theContext);
 #if __has_feature(objc_arc)
-      if ( (__bridge id)theContext.info )
-        [childObjects addObject:(__bridge id)theContext.info];
+    if ((__bridge id)theContext.info) {
+      [childObjects addObject:(__bridge id)theContext.info];
+    }
 #else
       if ( (id)theContext.info )
         [childObjects addObject:(id)theContext.info];
 #endif
-    }
-    
-    // cleanup and return result...
-    free( children );
-#if __has_feature(objc_arc) 
-  return ( [childObjects count] ? [childObjects copy] : nil );
+  }
+
+  // cleanup and return result...
+  free(children);
+#if __has_feature(objc_arc)
+  return ([childObjects count] ? [childObjects copy] : nil);
 #else
   return ( [childObjects count] ? [[childObjects copy] autorelease] : nil );
 #endif
@@ -354,9 +358,9 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 //  isLeaf
 //---------------------------------------------------------- 
-- (BOOL) isLeaf;
+- (BOOL)isLeaf;
 {
-    return ( (NSUInteger)CFTreeGetChildCount( treeBacking ) ? NO : YES );
+  return ((NSUInteger)CFTreeGetChildCount(treeBacking) ? NO : YES);
 }
 
 #pragma mark -
@@ -365,10 +369,10 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 //  contentObject
 //---------------------------------------------------------- 
-- (id) contentObject;
+- (id)contentObject;
 {
-    CFTreeContext theContext;
-    CFTreeGetContext( treeBacking, &theContext );
+  CFTreeContext theContext;
+  CFTreeGetContext(treeBacking, &theContext);
 #if __has_feature(objc_arc)
   return (__bridge id)theContext.info;
 #else
@@ -379,10 +383,10 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 //  setContentObject:
 //---------------------------------------------------------- 
-- (void) setContentObject: (id) theContentObject;
+- (void)setContentObject:(id)theContentObject;
 {
-    CFTreeContext theContext = JKPTreeCreateContext( theContentObject );
-    CFTreeSetContext( treeBacking, &theContext );
+  CFTreeContext theContext = JKPTreeCreateContext(theContentObject);
+  CFTreeSetContext(treeBacking, &theContext);
 }
 
 @end
@@ -394,16 +398,17 @@ CFTreeContext JKPTreeCreateContext( id content )
 //---------------------------------------------------------- 
 //  initWithCFTree:
 //---------------------------------------------------------- 
-- (id) initWithCFTree:(CFTreeRef)backing;
+- (id)initWithCFTree:(CFTreeRef)backing;
 {
-    self = [super init];
-    if ( !self )
-        return nil;
-    
-    CFRetain( backing );
-    treeBacking = backing;
-    
-    return self;
+  self = [super init];
+  if (!self) {
+    return nil;
+  }
+
+  CFRetain(backing);
+  treeBacking = backing;
+
+  return self;
 }
 
 @end

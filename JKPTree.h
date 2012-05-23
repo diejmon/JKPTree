@@ -22,8 +22,9 @@
 + (id) treeWithContentObject:(id)theContentObject;
 - (id) initWithContentObject:(id)theContentObject;
 
-- (void) addChildObject:(id)childObject;
-- (void) addChildObject:(id)childObject atIndex:(NSUInteger)index;
+/** Return added child */
+- (JKPTree *) addChildObject:(id)childObject;
+- (JKPTree *) addChildObject:(id)childObject atIndex:(NSUInteger)index;
 - (BOOL) removeChildObject:(id)childObject;
 - (void) removeChildObjectAtIndex:(NSUInteger)index;
 - (void) removeAllChildren;
